@@ -7,6 +7,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/fatih/color"
@@ -69,7 +70,7 @@ func main() {
 		words := unicodeclass.Split(strings.ToLower(srcscan.Text()))
 		scan := bufio.NewScanner(in)
 		lno := 0
-		result := make([][][3][]string, distance+1)
+		result := make([][][4][]string, distance+1)
 		for scan.Scan() {
 			lno++
 			linewords := unicodeclass.Split(scan.Text())
@@ -90,10 +91,14 @@ func main() {
 				}
 
 				if found == len(words) {
-					result[max] = append(result[max], [3][]string{
+					lnostr := []string{}
+					lnostr = append(lnostr, strconv.Itoa(lno))
+					result[max] = append(result[max], [4][]string{
 						linewords[:i],
 						linewords[i : i+found],
-						linewords[i+found:]})
+						linewords[i+found:],
+						lnostr,
+					})
 					break
 				}
 			}
@@ -119,16 +124,16 @@ func main() {
 					right := strings.Join(result[i][j][2], "")
 
 					if isatty.IsTerminal(os.Stdout.Fd()) {
-						fmt.Fprintf(out, "%s (d=%d): L.%d:%s\n",
+						fmt.Fprintf(out, "%s (d=%d): L.%s:%s\n",
 							file,
 							i,
-							lno,
+							result[i][j][3][0],
 							left+color.RedString(middle)+right)
 					} else {
-						fmt.Fprintf(out, "%s (d=%d): L.%d:%s\n",
+						fmt.Fprintf(out, "%s (d=%d): L.%s:%s\n",
 							file,
 							i,
-							lno,
+							result[i][j][3][0],
 							left+middle+right)
 					}
 				}
