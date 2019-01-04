@@ -7,6 +7,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"sort"
 	"strings"
 
 	"github.com/fatih/color"
@@ -119,7 +120,9 @@ func main() {
 		}
 
 		for i := 1; i <= distance; i++ {
-			if 0 < len(result[i]) && len(result[i]) < 20 {
+			if 0 < len(result[i]) {
+				sort.Slice(result[i], func(j, k int) bool { return result[i][j].NLSD < result[i][k].NLSD })
+
 				if isatty.IsTerminal(os.Stdout.Fd()) {
 					fmt.Fprintf(out, "\nIN: %s: L.%d:%s\n",
 						srcfile,
@@ -138,15 +141,17 @@ func main() {
 					right := strings.Join(result[i][j].Right, "")
 
 					if isatty.IsTerminal(os.Stdout.Fd()) {
-						fmt.Fprintf(out, "%s (d=%d): L.%s:%s\n",
+						fmt.Fprintf(out, "%s (d=%d, n=%f): L.%d:%s\n",
 							file,
 							i,
+							result[i][j].NLSD,
 							result[i][j].LineNo,
 							left+color.RedString(middle)+right)
 					} else {
-						fmt.Fprintf(out, "%s (d=%d): L.%s:%s\n",
+						fmt.Fprintf(out, "%s (d=%d, n=%f): L.%d:%s\n",
 							file,
 							i,
+							result[i][j].NLSD,
 							result[i][j].LineNo,
 							left+middle+right)
 					}
