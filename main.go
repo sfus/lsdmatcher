@@ -7,7 +7,6 @@ import (
 	"io"
 	"log"
 	"os"
-	"strconv"
 	"strings"
 
 	"github.com/fatih/color"
@@ -16,6 +15,15 @@ import (
 	lsd "github.com/mattn/go-lsd"
 	unicodeclass "github.com/mattn/go-unicodeclass"
 )
+
+type Match struct {
+	Left   []string
+	Middle []string
+	Right  []string
+	LineNo int
+	LSD    int
+	NLSD   float64 // Normalized Levenshtein Distance
+}
 
 func main() {
 	var distance int
@@ -67,13 +75,15 @@ func main() {
 			in = f
 		}
 
-		words := unicodeclass.Split(strings.ToLower(srcscan.Text()))
+		srcline := srcscan.Text()
+		words := unicodeclass.Split(strings.ToLower(srcline))
 		scan := bufio.NewScanner(in)
 		lno := 0
-		result := make([][][4][]string, distance+1)
+		result := make([][]Match, distance+1)
 		for scan.Scan() {
 			lno++
-			linewords := unicodeclass.Split(scan.Text())
+			line := scan.Text()
+			linewords := unicodeclass.Split(line)
 			for i := 0; i < len(linewords); i++ {
 				if i+len(words) >= len(linewords) {
 					break
@@ -89,15 +99,19 @@ func main() {
 					}
 					found++
 				}
+				longer := srcline
+				if longer < line {
+					longer = line
+				}
 
 				if found == len(words) {
-					lnostr := []string{}
-					lnostr = append(lnostr, strconv.Itoa(lno))
-					result[max] = append(result[max], [4][]string{
-						linewords[:i],
-						linewords[i : i+found],
-						linewords[i+found:],
-						lnostr,
+					result[max] = append(result[max], Match{
+						Left:   linewords[:i],
+						Middle: linewords[i : i+found],
+						Right:  linewords[i+found:],
+						LineNo: lno,
+						LSD:    max,
+						NLSD:   float64(max) / float64(len(longer)),
 					})
 					break
 				}
@@ -110,7 +124,7 @@ func main() {
 					fmt.Fprintf(out, "\nIN: %s: L.%d:%s\n",
 						srcfile,
 						srclno,
-						color.GreenString(srcscan.Text()))
+						color.GreenString(srcline))
 				} else {
 					fmt.Fprintf(out, "\nIN: %s: L.%d:%s\n",
 						srcfile,
@@ -119,21 +133,21 @@ func main() {
 				}
 
 				for j := 0; j < len(result[i]); j++ {
-					left := strings.Join(result[i][j][0], "")
-					middle := strings.Join(result[i][j][1], "")
-					right := strings.Join(result[i][j][2], "")
+					left := strings.Join(result[i][j].Left, "")
+					middle := strings.Join(result[i][j].Middle, "")
+					right := strings.Join(result[i][j].Right, "")
 
 					if isatty.IsTerminal(os.Stdout.Fd()) {
 						fmt.Fprintf(out, "%s (d=%d): L.%s:%s\n",
 							file,
 							i,
-							result[i][j][3][0],
+							result[i][j].LineNo,
 							left+color.RedString(middle)+right)
 					} else {
 						fmt.Fprintf(out, "%s (d=%d): L.%s:%s\n",
 							file,
 							i,
-							result[i][j][3][0],
+							result[i][j].LineNo,
 							left+middle+right)
 					}
 				}
